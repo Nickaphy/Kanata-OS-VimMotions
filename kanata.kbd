@@ -1,34 +1,31 @@
-(defcfg process-unmapped-keys yes)
+;; Entry point.
+;;
+;; Holding Caps Lock activates `mark-mode` (a plain `layer-while-held`
+;; layer). Releasing Caps reverts to `insert` automatically - no exit
+;; keypress needed. Caps's native uppercase-toggle is fully suppressed;
+;; kanata consumes the raw key.
+;;
+;; `esc` stays in defsrc but is otherwise untouched - it passes through
+;; as a literal Escape in every layer.
 
-(defsrc caps h j k l w b e d i u y v)
+(include vim/1-interface.kbd)
+(include vim/4-normal-layer.kbd)
 
 (defalias
-  nav      (layer-while-held navlayer)
-  ddo      (one-shot 500 (layer-toggle dpending))
-  dio      (one-shot 500 (layer-toggle dipending))
-  delline  (macro home S-down bspc)
-  delword  (macro C-lft C-S-rght bspc)
-  vtog     (layer-toggle visuallayer)
-  vdel     (multi bspc (layer-toggle visuallayer))
-  vyank    (multi C-c (layer-toggle visuallayer))
+  boot-to-insert (layer-switch insert)
 )
 
-(deflayer base
-  @nav  _     _     _    _      _       _      _       _    _    _    _    _
+(defcfg
+  process-unmapped-keys yes
+  alias-to-trigger-on-load boot-to-insert   ;; always start kanata in insert mode
 )
 
-(deflayer navlayer
-  _     left  down  up   rght   C-rght  C-lft  C-rght  @ddo _    C-z  C-c  @vtog
+(defsrc
+  caps
+  esc
 )
 
-(deflayer dpending
-  _     _     _     _    _      _       _      _       @delline @dio _    _    _
-)
-
-(deflayer dipending
-  _     _     _     _    _      @delword _      _       _    _    _    _    _
-)
-
-(deflayer visuallayer
-  _     S-left S-down S-up S-rght C-S-rght C-S-lft C-S-rght @vdel _    _    @vyank @vtog
+(deflayermap (insert)
+  caps  (layer-while-held mark-mode)   ;; hold Caps: mark mode. release: back here.
+  ___   use-defsrc                     ;; esc and anything else unlisted: pass through untouched
 )

@@ -1,0 +1,34 @@
+(defcfg process-unmapped-keys yes)
+
+(defsrc caps h j k l w b e d i u y v)
+
+(defalias
+  nav      (layer-while-held navlayer)
+  ddo      (one-shot 500 (layer-toggle dpending))
+  dio      (one-shot 500 (layer-toggle dipending))
+  delline  (macro home S-down bspc)
+  delword  (macro C-lft C-S-rght bspc)
+  vtog     (layer-toggle visuallayer)
+  vdel     (multi bspc (layer-toggle visuallayer))
+  vyank    (multi C-c (layer-toggle visuallayer))
+)
+
+(deflayer base
+  @nav  _     _     _    _      _       _      _       _    _    _    _    _
+)
+
+(deflayer navlayer
+  _     left  down  up   rght   C-rght  C-lft  C-rght  @ddo _    C-z  C-c  @vtog
+)
+
+(deflayer dpending
+  _     _     _     _    _      _       _      _       @delline @dio _    _    _
+)
+
+(deflayer dipending
+  _     _     _     _    _      @delword _      _       _    _    _    _    _
+)
+
+(deflayer visuallayer
+  _     S-left S-down S-up S-rght C-S-rght C-S-lft C-S-rght @vdel _    _    @vyank @vtog
+)

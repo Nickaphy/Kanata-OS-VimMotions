@@ -1,0 +1,119 @@
+;; ----------------
+;; mark mode layer
+;; ----------------
+;;
+;; Simple, non-vim layer. h/j/k/l are plain arrow keys.
+;;
+;; w/b jump forward/backward one word with no selection (stateless,
+;; same behavior every press).
+;;
+;; e selects the entire current line, including its line break
+;; (stateless).
+;;
+;; n/m select/extend by word, and behave differently depending on
+;; whether the immediately preceding real keypress (in this layer or
+;; not) was n or m:
+;;   - fresh press (previous real key was NOT n and NOT m): select the
+;;     whole current word, direction-aware so the anchor ends up on
+;;     the side that lets an immediately-following continuing press of
+;;     the SAME key extend further instead of collapsing back onto the
+;;     anchor:
+;;       - fresh m: snap to word start (Ctrl+Left, anchor), then
+;;         select to word end (Ctrl+Shift+Right, focus). A following
+;;         continuing m then extends focus further right.
+;;       - fresh n: snap to word end (Ctrl+Right, anchor), then select
+;;         to word start (Ctrl+Shift+Left, focus). A following
+;;         continuing n then extends focus further left into the
+;;         previous word instead of landing back on the anchor.
+;;   - continuing press (previous real key WAS n or m, either one):
+;;     today's original behavior - extend the existing selection.
+;;     n extends backward (Ctrl+Shift+Left), m extends forward
+;;     (Ctrl+Shift+Right).
+;; Any other real keypress (h/j/k/l/w/b/e/etc.) or releasing Caps to
+;; leave the layer counts as "not n or m", so the next n/m press after
+;; moving around is treated as fresh again. This falls out naturally
+;; from checking real input history: entering the layer always starts
+;; with a `caps` keypress, and every non-n/m key breaks the streak.
+
+(defalias
+  ;; @right nudges off a word-start boundary first: without it, if the
+  ;; cursor sits exactly at the start of the current word, Ctrl+Left
+  ;; jumps to the PREVIOUS word's start instead of staying put, so the
+  ;; whole-word select would grab the wrong word.
+  select-word (macro @right @start-of-word @select-end-of-word)
+
+  ;; Mirror of @select-word for a fresh n press: anchor lands at word
+  ;; END (via @left nudge + @end-of-word) and focus at word START. That
+  ;; way a following continuing n (Ctrl+Shift+Left) moves focus further
+  ;; left into the previous word instead of back onto the anchor, which
+  ;; would collapse the selection.
+  select-word-n (macro @left @end-of-word @select-start-of-word)
+
+  ;; Open a new line below the current one, matching the old Caps+O action.
+  new-line-below (macro @end-of-line @linefeed)
+
+  mm-n (switch
+    ((input-history real n 2)) @select-start-of-word break
+    ((input-history real m 2)) @select-start-of-word break
+    ()                         @select-word-n        break
+  )
+  mm-m (switch
+    ((input-history real n 2)) @select-end-of-word break
+    ((input-history real m 2)) @select-end-of-word break
+    ()                         @select-word        break
+  )
+)
+
+(deflayermap (mark-mode)
+  up    @up
+  down  @down
+  lft   @left
+  rght  @right
+  h     @left
+  j     @down
+  k     @up
+  l     @right
+
+  v     (layer-while-held visual-selection)   ;; hold Caps+V: select with h/j/k/l
+
+  w     @end-of-word     ;; jump forward one word, no selection
+  b     @start-of-word   ;; jump backward one word, no selection
+  e     (macro @start-of-line @select-down)   ;; select entire current line
+  o     @new-line-below   ;; create a line below the current line
+
+  n     @mm-n   ;; fresh: select whole word. continuing: extend backward.
+  m     @mm-m   ;; fresh: select whole word. continuing: extend forward.
+
+  0     @start-of-line
+  4     (fork _ @end-of-line (lsft rsft))   ;; shift 4 ($) -> end of line
+
+  u     @undo
+  p     @raw-paste
+  del   @delete
+
+  ;; loop modifiers to the mark-mode layer
+  rctl  rctl
+  lctl  lctl
+  lmet  lmet
+  rmet  rmet
+  lalt  lalt
+  ralt  ralt
+  lsft  lsft
+  rsft  rsft
+
+  ;; deactivate any other key presses
+  ___   XX
+)
+
+;; While Caps+V is held, extend selection using the existing OS shortcuts.
+;; All other bindings inherit mark-mode, including n/m word selection.
+;; Release V to return to normal Caps navigation.
+(deflayermap (visual-selection)
+  h     @select-left
+  j     @select-down
+  k     @select-up
+  l     @select-right
+  b     @select-start-of-word
+  w     @select-end-of-word
+  ___   _
+)

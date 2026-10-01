@@ -1,104 +1,60 @@
-# Caps Lock Modal Layer
+# Caps Text Controls
 
-Turns Caps Lock into a held modifier that gives you vim-style navigation and
-editing everywhere on Linux — not just in a text editor. Built on
-[kanata](https://github.com/jtroo/kanata), which reads and writes keys at the
-kernel evdev/uinput level, so it works system-wide regardless of X11 or
-Wayland (built and tested on Fedora + KDE Plasma/Wayland).
+A small, system-wide text-editing layer built with [Kanata](https://github.com/jtroo/kanata). Hold **Caps Lock** to move, select, and make simple line edits with familiar home-row keys. It uses ordinary operating-system shortcuts, so it works across apps without relying on each app's Vim plugin.
 
-## Why
+## Controls
 
-Vim motions don't work outside real vim/Neovim — every "vim mode" bolted
-onto another app is a partial reimplementation with its own gaps. Arrow keys
-work everywhere, but reaching for them is slow. This puts arrow-key
-navigation (plus a few vim-shaped editing commands) on the home row, built
-entirely out of shortcuts every app already understands
-(Ctrl+Arrow, Shift+Arrow, Ctrl+Shift+Arrow) — so it never depends on an
-app's own vim plugin being any good.
+Hold **Caps Lock** to activate the layer. Release it to return to normal typing.
 
-## Quick start
+| Keys while holding Caps | Action |
+|---|---|
+| `h` / `j` / `k` / `l` | Move left / down / up / right |
+| `b` / `w` | Jump backward / forward by a word |
+| `n` / `m` | Select the current word, then extend selection backward / forward with repeated presses |
+| `e` | Select the current line |
+| `o` | Move to the end of the line and insert a line break below |
+| `0` / `Shift+4` (`$`) | Move to the start / end of the line |
+| `u` / `p` / `del` | Undo / paste / delete |
+
+### Word selection mode
+
+Hold **Caps+V** and use:
+
+| Keys while holding Caps+V | Action |
+|---|---|
+| `h` / `j` / `k` / `l` | Extend selection left / down / up / right |
+| `b` / `w` | Extend selection backward / forward by a word |
+
+Release **V** to return to the regular Caps layer. The `n` and `m` word-selection bindings remain available in the regular layer.
+
+## Install
+
+From a clone of this repository, run:
 
 ```sh
-git clone <repo-url> ~/.config/kanata
-~/.config/kanata/install.sh
+./install.sh
 ```
 
-The script downloads the kanata binary if you don't have it, sets up the
-`input`/`uinput` permissions (needs sudo, one-time), installs the config,
-and enables it as a systemd user service that starts on login and restarts
-on failure.
+The installer places the config at `~/.config/kanata`, installs and enables a systemd user service, and sets up Linux `uinput` permissions. It uses `sudo` for system-level permissions. If it adds your account to the `input` or `uinput` groups, log out and back in once before using Kanata.
 
-First time being added to the `input`/`uinput` groups: log out and back in
-once for it to take effect.
+Check the service with:
 
-Check it's running:
 ```sh
 systemctl --user status kanata.service
 ```
 
-## Usage
+After editing the config, restart it with:
 
-Hold **Caps Lock** to enter the nav layer. Release it and you're typing
-normally — nothing is remapped unless Caps is held.
+```sh
+systemctl --user restart kanata.service
+```
 
-| Key (while holding Caps) | Action |
-|---|---|
-| `h` `j` `k` `l` | Left / Down / Up / Right |
-| `w` | Jump forward one word |
-| `b` | Jump backward one word |
-| `e` | Jump forward one word (approximation — see note below) |
-| `u` | Undo |
-| `y` | Copy (acts on the current selection) |
-| `d`, `d` | Delete the current line |
-| `d`, `i`, `w` | Delete the word under the cursor |
-| `v` | Toggle visual mode |
+## Configuration
 
-**Visual mode** (`v`): `h`/`j`/`k`/`l`/`w`/`b`/`e` extend a selection instead
-of just moving. `d` cuts the selection and exits back to normal mode; `y`
-copies it and exits. Press `v` again to bail out without doing anything.
+- `kanata.kbd` loads the interface bindings and Caps layer.
+- `vim/1-interface.kbd` maps common actions to operating-system shortcuts. Linux is the configured platform; Windows and macOS mappings are marked experimental.
+- `vim/4-normal-layer.kbd` defines the Caps navigation, selection, and line actions.
+- `kanata.service` runs the configuration as a systemd user service.
+- `install.sh` installs the binary, permissions, config, and service.
 
-### Note on `e`
-
-Real vim's `e` (end of word) and `w` (start of next word) are genuinely
-different motions. There's no OS-native "end of word" shortcut to build `e`
-on, so here it's mapped to the same thing as `w`. Close enough in practice,
-not identical to vim.
-
-## Files
-
-- `kanata.kbd` — the config: all key layers and bindings
-- `kanata.service` — systemd user unit, starts kanata on login, restarts on failure
-- `install.sh` — installs everything above; safe to re-run
-
-## Known gaps
-
-- Releasing Caps Lock mid-selection while visual mode is active hasn't been
-  tested. If it misbehaves, finish the selection first (`d`, `y`, or `v` to
-  exit) before letting go of Caps.
-- `install.sh`'s binary-download path (for a machine without kanata already
-  installed) hasn't been exercised on a genuinely fresh machine. If the
-  release zip's internal filename doesn't match what the script expects,
-  it prints the zip's contents instead of failing silently — fix the
-  `-iname` pattern in that case.
-
-## How it works
-
-kanata intercepts raw keyboard events at the evdev level — below X11,
-Wayland, and the compositor — and emits synthetic key presses via uinput.
-Because of that:
-
-- It behaves the same regardless of window manager or app: anything an OS
-  shortcut reaches, this reaches.
-- It sits below compositor-level key remaps (e.g. KDE's Caps↔Esc swap via
-  XKB) — the two don't conflict, since kanata sees the true physical key
-  before that remap is ever applied.
-- It can't fake anything an app doesn't already support. `d`,`i`,`w` isn't a
-  real "delete inner word" — it's "select the word under the cursor with
-  the OS's own word-select shortcut, then delete." It rides on shortcuts
-  every app already implements rather than reimplementing vim's text-object
-  model from scratch.
-
-## Requirements
-
-- Linux with `uinput` kernel module support
-- `curl`, `unzip`, `sudo`, `systemd --user`
+Caps Lock is consumed while Kanata is running and acts only as a held modifier in this setup; its normal Caps Lock toggle is suppressed.
